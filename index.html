@@ -4,11 +4,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebWindows</title>
-    <script src="wm.js" defer></script>
+    <title>Pane</title>
+    <script src="https://unpkg.com/typescript@latest/lib/typescript.js"></script>
 </head>
 
 <body>
+    <script>
+        // Fetch the TypeScript code from the server
+        fetch('pane.ts')
+            .then(response => response.text())
+            .then(tsCode => {
+                // Compile the TypeScript code
+                var jsCode = ts.transpileModule(tsCode, {
+                    compilerOptions: { module: ts.ModuleKind.CommonJS }
+                }).outputText;
+
+                // Execute the compiled JavaScript code
+                new Function(jsCode)();
+            })
+            .catch(err => {
+                console.error('Failed to load or compile the TypeScript file:', err);
+            });
+    </script>
 </body>
 
 </html>
