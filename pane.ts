@@ -72,20 +72,18 @@ class PWindow extends UIElement {
     }
 
     maximise(canvasWidth: number, canvasHeight: number): void {
-        console.log('maximise', this.prevDimensions, this.isMaximised);
         if (!this.isMaximised) {
-            this.prevDimensions = this.dim;
+            this.prevDimensions = new Dimensions(this.dim.x, this.dim.y, this.dim.width, this.dim.height);
             this.dim.x = 0;
             this.dim.y = 0;
             this.dim.width = canvasWidth;
             this.dim.height = canvasHeight;
             this.isMaximised = true;
         } else {
-            this.prevDimensions = this.dim;
-            this.dim = this.prevDimensions || new Dimensions(0, 0, canvasWidth / 2, canvasHeight / 2);
+            this.dim = new Dimensions(this.prevDimensions!.x, this.prevDimensions!.y, this.prevDimensions!.width, this.prevDimensions!.height) || new Dimensions(0, 0, canvasWidth / 2, canvasHeight / 2);
             this.isMaximised = false;
+            this.prevDimensions = undefined;
         }
-        console.log(this.dim, this.prevDimensions);
     }
 
     restore(): void {
