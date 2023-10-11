@@ -1,12 +1,17 @@
-class UIElement {
-    constructor(x, y, width, height) {
+class Dimensions {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+
+    constructor(x: number, y: number, width: number, height: number) {
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
     }
 
-    isInside(posX, posY) {
+    isInside(posX: number, posY: number): boolean {
         return (
             posX >= this.x &&
             posX <= this.x + this.width &&
@@ -16,118 +21,140 @@ class UIElement {
     }
 }
 
-class Button extends UIElement {
-    constructor(x, y, width, height, type) {
-        super(x, y, width, height);
-        this.type = type;  // type can be 'close' or 'maximise'
-    }
+class UIElement {
+    dim: Dimensions;
 
-    draw(ctx, x, y, isMaximised) {
-        this.x = x;
-        this.y = y;
-        ctx.fillStyle = this.type === 'close' ? 'red' : (isMaximised ? 'orange' : 'green');
-        ctx.fillRect(x, y, this.width, this.height);
+    constructor(dim: Dimensions) {
+        this.dim = dim;
     }
 }
 
-class Window extends UIElement {
-    constructor(x, y, width, height, title) {
-        super(x, y, width, height);
+class Button extends UIElement {
+    type: 'close' | 'maximise';
+
+    constructor(dim: Dimensions, type: 'close' | 'maximise') {
+        super(dim);
+        this.type = type;
+    }
+
+    draw(ctx: CanvasRenderingContext2D, x: number, y: number, isMaximised: boolean = false): void {
+        this.dim.x = x;
+        this.dim.y = y;
+        ctx.fillStyle = this.type === 'close' ? 'red' : (isMaximised ? 'orange' : 'green');
+        ctx.fillRect(x, y, this.dim.width, this.dim.height);
+    }
+}
+
+class PWindow extends UIElement {
+    title: string;
+    isMinimized: boolean;
+    isMaximised: boolean;
+    isClosed: boolean;
+    prevDimensions?: Dimensions;
+    closeButton: Button;
+    maximiseButton: Button;
+
+    constructor(dim: Dimensions, title: string) {
+        super(dim);
         this.title = title;
         this.isMinimized = false;
         this.isClosed = false;
-        this.prevDimensions = null;  // Holds the previous dimensions before maximising
-        this.isMaximised = false;  // Flag to check if the window is maximised
+        this.prevDimensions = undefined;
+        this.isMaximised = false;
 
         const inset = 10;
-        this.closeButton = new Button(this.x + this.width - 20 - inset, this.y + inset, 20, 20, 'close');
-        this.maximiseButton = new Button(this.x + this.width - 40 - inset, this.y + inset, 20, 20, 'maximise');
+        this.closeButton = new Button(new Dimensions(this.dim.x + this.dim.width - 20 - inset, this.dim.y + inset, 20, 20), 'close');
+        this.maximiseButton = new Button(new Dimensions(this.dim.x + this.dim.width - 40 - inset, this.dim.y + inset, 20, 20), 'maximise');
     }
 
-    close() {
+    close(): void {
         this.isClosed = true;
     }
 
-    minimize() {
-        this.isMinimized = true;
-    }
-
-    maximise(canvasWidth, canvasHeight) {
+    maximise(canvasWidth: number, canvasHeight: number): void {
+        console.log('maximise', this.prevDimensions, this.isMaximised);
         if (!this.isMaximised) {
-            this.prevDimensions = { x: this.x, y: this.y, width: this.width, height: this.height };
-            this.x = 0;
-            this.y = 0;
-            this.width = canvasWidth;
-            this.height = canvasHeight;
+            this.prevDimensions = this.dim;
+            this.dim.x = 0;
+            this.dim.y = 0;
+            this.dim.width = canvasWidth;
+            this.dim.height = canvasHeight;
             this.isMaximised = true;
         } else {
-            const { x, y, width, height } = this.prevDimensions || { x: 0, y: 0, width: canvasWidth / 2, height: canvasHeight / 2 };
-            this.x = x;
-            this.y = y;
-            this.width = width;
-            this.height = height;
+            this.prevDimensions = this.dim;
+            this.dim = this.prevDimensions || new Dimensions(0, 0, canvasWidth / 2, canvasHeight / 2);
             this.isMaximised = false;
         }
+        console.log(this.dim, this.prevDimensions);
     }
 
-    restore() {
+    restore(): void {
         this.isMinimized = false;
     }
 
-    resize(width, height) {
-        this.width = width;
-        this.height = height;
+    resize(width: number, height: number): void {
+        this.dim.width = width;
+        this.dim.height = height;
     }
 
-    isCloseButtonInside(posX, posY) {
-        return this.closeButton.isInside(posX, posY);
+    isCloseButtonInside(posX: number, posY: number) {
+        return this.closeButton.dim.isInside(posX, posY);
     }
 
-    isMaximiseButtonInside(posX, posY) {
-        return this.maximiseButton.isInside(posX, posY);
+    isMaximiseButtonInside(posX: number, posY: number) {
+        return this.maximiseButton.dim.isInside(posX, posY);
     }
 
-    isEdge(posX, posY) {
-        const edgeSize = 10;
+    isEdge(posX: number, posY: number, edgeSize: number = 10) {
         const edges = {
-            left: posX >= this.x && posX <= this.x + edgeSize,
-            top: posY >= this.y && posY <= this.y + edgeSize,
-            right: posX >= this.x + this.width - edgeSize && posX <= this.x + this.width,
-            bottom: posY >= this.y + this.height - edgeSize && posY <= this.y + this.height
+            left: posX >= this.dim.x && posX <= this.dim.x + edgeSize,
+            top: posY >= this.dim.y && posY <= this.dim.y + edgeSize,
+            right: posX >= this.dim.x + this.dim.width - edgeSize && posX <= this.dim.x + this.dim.width,
+            bottom: posY >= this.dim.y + this.dim.height - edgeSize && posY <= this.dim.y + this.dim.height
         };
-        return Object.keys(edges).some(edge => edges[edge]) ? edges : null;
+        return Object.keys(edges).some(edge => edges[edge]) ? edges : undefined;
     }
 
-    draw(ctx) {
+    draw(ctx: CanvasRenderingContext2D) {
         // Fill background
         ctx.fillStyle = 'white';
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.fillRect(this.dim.x, this.dim.y, this.dim.width, this.dim.height);
 
         // Draw border
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 2;
-        ctx.strokeRect(this.x, this.y, this.width, this.height);
+        ctx.strokeRect(this.dim.x, this.dim.y, this.dim.width, this.dim.height);
 
         // Draw title
         ctx.fillStyle = 'black';
-        ctx.fillText(this.title, this.x + 10, this.y + 20);
+        ctx.fillText(this.title, this.dim.x + 10, this.dim.y + 20);
 
         const inset = 10;
-        this.closeButton.draw(ctx, this.x + this.width - 20 - inset, this.y + inset);
-        this.maximiseButton.draw(ctx, this.x + this.width - 40 - inset, this.y + inset, this.isMaximised);
+        this.closeButton.draw(ctx, this.dim.x + this.dim.width - 20 - inset, this.dim.y + inset);
+        this.maximiseButton.draw(ctx, this.dim.x + this.dim.width - 40 - inset, this.dim.y + inset, this.isMaximised);
     }
 }
 
-class WindowManager {
-    constructor(canvas) {
+class PWindowManager {
+    canvas: HTMLCanvasElement;
+    ctx: CanvasRenderingContext2D;
+    windows: PWindow[];
+    draggingWindow?: PWindow;
+    resizingWindow?: PWindow;
+    offsetX: number;
+    offsetY: number;
+    resizeEdge?: { left: boolean; top: boolean; right: boolean; bottom: boolean; };
+    createWindowButton: { x: number; y: number; width: number; height: number; };
+
+    constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
-        this.ctx = canvas.getContext("2d");
+        this.ctx = canvas.getContext("2d")!;
         this.windows = [];
-        this.draggingWindow = null;
-        this.resizingWindow = null;
+        this.draggingWindow = undefined;
+        this.resizingWindow = undefined;
         this.offsetX = 0;
         this.offsetY = 0;
-        this.resizeEdge = null;
+        this.resizeEdge = undefined;
 
         this.canvas.addEventListener("mousedown", this.onMouseDown.bind(this));
         this.canvas.addEventListener("mousemove", this.onMouseMove.bind(this));
@@ -136,13 +163,13 @@ class WindowManager {
         this.createWindowButton = { x: 10, y: 10, width: 100, height: 30 };
     }
 
-    createWindow(x, y, width, height, title) {
-        const window = new Window(x, y, width, height, title);
+    createWindow(dim: Dimensions, title: string): void {
+        const window = new PWindow(dim, title);
         this.windows.push(window);
         this.draw();
     }
 
-    onMouseDown(event) {
+    onMouseDown(event: { clientX: number; clientY: number; }): void {
         const mouseX = event.clientX - this.canvas.offsetLeft;
         const mouseY = event.clientY - this.canvas.offsetTop;
 
@@ -164,14 +191,14 @@ class WindowManager {
                 win.maximise(this.canvas.width, this.canvas.height);
                 this.draw();
                 return;
-            } else if (win.isInside(mouseX, mouseY) && !win.isMinimized && !win.isClosed) {
+            } else if (win.dim.isInside(mouseX, mouseY) && !win.isMinimized && !win.isClosed) {
                 if (win.isEdge(mouseX, mouseY)) {
                     this.resizingWindow = win;
                     this.resizeEdge = this.getResizeEdge(win, mouseX, mouseY);
                 } else {
                     this.draggingWindow = win;
-                    this.offsetX = mouseX - win.x;
-                    this.offsetY = mouseY - win.y;
+                    this.offsetX = mouseX - win.dim.x;
+                    this.offsetY = mouseY - win.dim.y;
                 }
 
                 // Bring the window to the top
@@ -184,13 +211,13 @@ class WindowManager {
         }
     }
 
-    onMouseMove(event) {
+    onMouseMove(event: { clientX: number; clientY: number; }): void {
         const mouseX = event.clientX - this.canvas.offsetLeft;
         const mouseY = event.clientY - this.canvas.offsetTop;
 
         if (this.draggingWindow) {
-            this.draggingWindow.x = mouseX - this.offsetX;
-            this.draggingWindow.y = mouseY - this.offsetY;
+            this.draggingWindow.dim.x = mouseX - this.offsetX;
+            this.draggingWindow.dim.y = mouseY - this.offsetY;
             this.draw();
         } else if (this.resizingWindow) {
             this.resizeWindow(mouseX, mouseY);
@@ -200,33 +227,33 @@ class WindowManager {
         }
     }
 
-    onMouseUp() {
-        this.draggingWindow = null;
-        this.resizingWindow = null;
+    onMouseUp(): void {
+        this.draggingWindow = undefined;
+        this.resizingWindow = undefined;
     }
 
-    getResizeEdge(win, mouseX, mouseY) {
+    getResizeEdge(win: PWindow, mouseX: number, mouseY: number): { left: boolean; top: boolean; right: boolean; bottom: boolean; } | undefined {
         const edges = win.isEdge(mouseX, mouseY);
         return edges;
     }
 
-    resizeWindow(mouseX, mouseY) {
-        const win = this.resizingWindow;
-        const edges = this.resizeEdge;
+    resizeWindow(mouseX: number, mouseY: number) {
+        const win = this.resizingWindow!;
+        const edges = this.resizeEdge!;
 
         if (edges.left) {
-            win.width += win.x - mouseX;
-            win.x = mouseX;
+            win.dim.width += win.dim.x - mouseX;
+            win.dim.x = mouseX;
         }
         if (edges.top) {
-            win.height += win.y - mouseY;
-            win.y = mouseY;
+            win.dim.height += win.dim.y - mouseY;
+            win.dim.y = mouseY;
         }
         if (edges.right) {
-            win.width = mouseX - win.x;
+            win.dim.width = mouseX - win.dim.x;
         }
         if (edges.bottom) {
-            win.height = mouseY - win.y;
+            win.dim.height = mouseY - win.dim.y;
         }
     }
 
@@ -280,7 +307,7 @@ class WindowManager {
         const randomHeight = Math.random() * (maxHeight - minHeight) + minHeight;
         const randomX = Math.random() * (this.canvas.width - randomWidth);
         const randomY = Math.random() * (this.canvas.height - randomHeight);
-        const newWindow = new Window(randomX, randomY, randomWidth, randomHeight, 'Random Window');
+        const newWindow = new PWindow(new Dimensions(randomX, randomY, randomWidth, randomHeight), 'Random Window');
         this.windows.push(newWindow);
     }
 }
@@ -292,8 +319,8 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 // Create a new window manager
-const windowManager = new WindowManager(canvas);
+const windowManager = new PWindowManager(canvas);
 
 // Create some windows
-windowManager.createWindow(100, 100, 200, 200, "Window 1");
-windowManager.createWindow(400, 100, 200, 200, "Window 2");
+windowManager.createWindow(new Dimensions(100, 100, 200, 200), "Window 1");
+windowManager.createWindow(new Dimensions(400, 100, 200, 200), "Window 2");
